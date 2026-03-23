@@ -112,6 +112,16 @@ export default function App() {
         if (msg.type === 'drone_update') {
           const d = msg.drone
           setDrones(prev => ({ ...prev, [d.id]: d }))
+          /*setDrones(prev => {
+            const updated = { ...prev, [d.id]: d }
+            // Auto-reset when every drone has landed
+            const allLanded =
+              Object.keys(updated).length === 3 &&
+              Object.values(updated).every(dr => dr.status === 'LANDED')
+            if (allLanded) setRunning(false)
+            return updated
+          })*/
+
         }
 
         if (msg.type === 'detection') {

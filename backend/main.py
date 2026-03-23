@@ -187,7 +187,7 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
 
     # ── Takeoff ───────────────────────────────────────────────────────────────
     for alt in range(0, 16):
-        if not mission_state["running"]: return
+        if not mission_state["running"]: break
         mission_state["drones"][drone_id]["alt"] = alt
         await broadcast({"type": "drone_update", "drone": mission_state["drones"][drone_id]})
         await asyncio.sleep(0.10)
@@ -198,14 +198,14 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
 
     # ── Fly each waypoint ─────────────────────────────────────────────────────
     for wp_i, wp in enumerate(waypoints):
-        if not mission_state["running"]: return
+        if not mission_state["running"]: break
 
         mission_state["drones"][drone_id]["wp_index"] = wp_i
         target_lat, target_lon = wp["lat"], wp["lon"]
         steps = 30
 
         for step in range(steps + 1):
-            if not mission_state["running"]: return
+            if not mission_state["running"]: break
             t   = step / steps
             lat = cur_lat + (target_lat - cur_lat) * t
             lon = cur_lon + (target_lon - cur_lon) * t
@@ -247,7 +247,7 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
 
     steps = 50
     for step in range(steps + 1):
-        if not mission_state["running"]: return
+        #if not mission_state["running"]: return
         t   = step / steps
         lat = cur_lat + (home_lat - cur_lat) * t
         lon = cur_lon + (home_lon - cur_lon) * t
@@ -260,6 +260,12 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
     mission_state["drones"][drone_id]["status"] = "LANDED"
     mission_state["drones"][drone_id]["speed"]  = 0
     await broadcast({"type": "drone_update", "drone": mission_state["drones"][drone_id]})
+
+    # Reset mission when every drone has landed
+    all_landed = all(d["status"] == "LANDED" for d in mission_state["drones"].values())
+    if all_landed:
+        mission_state["running"] = False
+        await broadcast({"type": "mission_stop"})
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
