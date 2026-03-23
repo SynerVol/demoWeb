@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+
+  # ── Python / FastAPI ──────────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: synervol-backend
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/config')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── React / Nginx ─────────────────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: synervol-frontend
+    expose:
+      - "80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Cloudflare Tunnel ─────────────────────────────────────────────────────
+  # The tunnel points at http://frontend:80 (configured in Cloudflare dashboard)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: synervol-tunnel
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    restart: unless-stopped
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+
+networks:
+  default:
+    name: synervol-net

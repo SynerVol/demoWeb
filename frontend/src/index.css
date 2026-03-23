@@ -1,0 +1,59 @@
+:root {
+  --bg: #050a0f;
+  --surface: #0a1520;
+  --surface2: #0f1f30;
+  --border: rgba(0,200,255,0.15);
+  --accent: #00c8ff;
+  --accent2: #ff6b35;
+  --danger: #ff2d55;
+  --success: #00ff88;
+  --warn: #ffd60a;
+  --text: #e0f0ff;
+  --text-dim: #5a8099;
+  --mono: 'Share Tech Mono', monospace;
+  --sans: 'Rajdhani', sans-serif;
+  --body: 'Inter', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+/* Leaflet overrides */
+.leaflet-container { background: #030d14 !important; }
+.leaflet-tile { filter: saturate(1.2) contrast(1.1) brightness(0.85); }
+.leaflet-control-zoom { display: none; }
+.leaflet-control-attribution { display: none; }
+
+/* Pulse animation for detections */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scanline {
+  0%   { top: -4px; }
+  100% { top: 100%; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 8px var(--accent); }
+  50%       { box-shadow: 0 0 24px var(--accent), 0 0 48px rgba(0,200,255,0.3); }
+}
