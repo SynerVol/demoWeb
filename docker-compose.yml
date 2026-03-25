@@ -9,6 +9,9 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+    device_cgroup_rules:
+      - "c 166:* rmw"    # ttyACM* devices (major 166)
+      - "c 188:* rmw"    # ttyUSB* devices (major 188) — in case you switch adapters
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/config')"]
       interval: 10s

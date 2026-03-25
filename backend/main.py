@@ -6,18 +6,29 @@ import json
 import random
 import time
 from typing import List, Dict, Any
+import threading
+import drone_hardware as hw
+
 
 app = FastAPI(title="SYNERVOL Drone Backend")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+# ── Start real drone thread ──────────────────────────────────────────────────
+@app.on_event("startup")
+async def startup():
+    # Runs in a thread so it doesn't block the event loop during the 10s timeout
+    threading.Thread(target=hw.connect, daemon=True).start()
+
 
 # ── FIXED HOME (takeoff / landing point, never changes) ───────────────────────
 HOME_LAT = 48.81430786259582
 HOME_LON = 2.3951368389402865
 
 DRONE_CONFIGS = [
-    {"id": "ALPHA-1", "color": "#00FFFF", "sector": 0},   # West third
-    {"id": "BETA-2",  "color": "#FF6B35", "sector": 1},   # Centre third
-    {"id": "GAMMA-3", "color": "#A855F7", "sector": 2},   # East third
+    {"id": "Drone LEADER", "color": "#00FFFF", "sector": 0},   # West third
+    {"id": "Drone FOLLOWER-1",  "color": "#FF6B35", "sector": 1},   # Centre third
+    {"id": "Drone FOLLOWER-2", "color": "#A855F7", "sector": 2},   # East third
 ]
 
 # ── GLOBAL STATE ──────────────────────────────────────────────────────────────
@@ -68,7 +79,7 @@ def boustrophedon_sector(center_lat, center_lon, radius, sector_idx,
     x_sec_min = -radius + sector_idx * sector_width
     x_sec_max = x_sec_min + sector_width
 
-    footprint = 2 * altitude * math.tan(math.radians(fov / 2))
+    footprint = 4 * altitude * math.tan(math.radians(fov / 2))
     spacing   = footprint * (1 - overlap)
 
     waypoints = []
@@ -134,9 +145,9 @@ def place_detections(center_lat, center_lon, radius, count):
             dN    = r * math.cos(angle)
             dE    = r * math.sin(angle)
             # Assign sector by East-offset
-            if   dE < -radius / 3:  sector, drone_id = 0, "ALPHA-1"
-            elif dE <  radius / 3:  sector, drone_id = 1, "BETA-2"
-            else:                   sector, drone_id = 2, "GAMMA-3"
+            if   dE < -radius / 3:  sector, drone_id = 0, "Drone LEADER"
+            elif dE <  radius / 3:  sector, drone_id = 1, "Drone FOLLOWER-1"
+            else:                   sector, drone_id = 2, "Drone FOLLOWER-2"
             lat, lon = offset_coords(center_lat, center_lon, dN, dE)
             pending.append({
                 "id":         f"det_{int(time.time()*1000)}_{drone_id}_{len(pending)}",
@@ -265,6 +276,7 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
     all_landed = all(d["status"] == "LANDED" for d in mission_state["drones"].values())
     if all_landed:
         mission_state["running"] = False
+        hw.stop_motors()
         await broadcast({"type": "mission_stop"})
 
 
@@ -321,12 +333,14 @@ async def start_mission(body: dict):
     for cfg in DRONE_CONFIGS:
         asyncio.create_task(simulate_drone(cfg, mission_state["waypoints"][cfg["id"]]))
 
+    hw.start_motors()
     return {"status": "started", "radius": radius, "detections_planted": num_detections}
 
 
 @app.post("/api/mission/stop")
 async def stop_mission():
     mission_state["running"] = False
+    hw.stop_motors()
     await broadcast({"type": "mission_stop"})
     return {"status": "stopped"}
 
@@ -351,3 +365,7 @@ async def ws_endpoint(ws: WebSocket):
     except WebSocketDisconnect:
         if ws in connected_clients:
             connected_clients.remove(ws)
+
+@app.get("/api/hardware")
+def hardware_status():
+    return hw.status()

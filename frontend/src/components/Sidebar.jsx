@@ -1,6 +1,6 @@
 import React from 'react'
 
-const DRONE_COLORS = { 'ALPHA-1': '#00FFFF', 'BETA-2': '#FF6B35', 'GAMMA-3': '#A855F7' }
+const DRONE_COLORS = { 'Drone LEADER': '#00FFFF', 'Drone FOLLOWER-1': '#FF6B35', 'Drone FOLLOWER-2': '#A855F7' }
 const STATUS_COLORS = { TAKEOFF: '#ffd60a', SCANNING: '#00ff88', RTL: '#ff6b35', LANDED: '#5a8099' }
 
 export default function Sidebar({ running, radius, setRadius, altitude, setAltitude, drones, detections, onStart, onStop, searchCenter }) {
@@ -46,7 +46,7 @@ export default function Sidebar({ running, radius, setRadius, altitude, setAltit
         <Label>SEARCH RADIUS (m)</Label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <input
-            type="range" min={30} max={200} value={radius}
+            type="range" min={50} max={700} value={radius}
             onChange={e => setRadius(+e.target.value)}
             disabled={running}
             style={{ flex: 1, accentColor: '#00c8ff' }}

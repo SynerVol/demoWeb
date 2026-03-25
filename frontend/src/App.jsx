@@ -14,7 +14,7 @@ const WS_URL = typeof window !== 'undefined'
   : 'ws://localhost:8000/ws'
 
 const HOME = [48.81430786259582, 2.3951368389402865]
-const DRONE_COLORS = { 'ALPHA-1': '#00FFFF', 'BETA-2': '#FF6B35', 'GAMMA-3': '#A855F7' }
+const DRONE_COLORS = { 'Drone LEADER': '#00FFFF', 'Drone FOLLOWER-1': '#FF6B35', 'Drone FOLLOWER-2': '#A855F7' }
 
 // ── Home base icon ────────────────────────────────────────────────────────────
 const homeIcon = L.divIcon({
