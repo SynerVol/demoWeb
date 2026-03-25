@@ -8,7 +8,14 @@ import time
 from typing import List, Dict, Any
 import threading
 import drone_hardware as hw
+# pour la detection d'image
+from fastapi.staticfiles import StaticFiles
+import os
+import detection
 
+# Create the directory if it doesn't exist
+os.makedirs("./static/detections", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app = FastAPI(title="SYNERVOL Drone Backend")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -20,6 +27,8 @@ async def startup():
     # Runs in a thread so it doesn't block the event loop during the 10s timeout
     threading.Thread(target=hw.connect, daemon=True).start()
 
+    # Start the image watcher
+    await detection.start_detection_service(app)
 
 # ── FIXED HOME (takeoff / landing point, never changes) ───────────────────────
 HOME_LAT = 48.81430786259582

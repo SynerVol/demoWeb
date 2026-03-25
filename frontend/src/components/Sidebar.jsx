@@ -163,6 +163,34 @@ export default function Sidebar({ running, radius, setRadius, altitude, setAltit
             </div>
           ))
         )}
+        {detections.length > 0 && [...detections].reverse().slice(0, 6).map(det => (
+          <div key={det.id} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '6px 8px', marginBottom: 4,
+            background: 'rgba(255,45,85,0.08)',
+            border: '1px solid rgba(255,45,85,0.2)',
+            borderRadius: 4,
+            animation: 'fadeIn 0.4s ease',
+            cursor: det.url ? 'pointer' : 'default',
+          }}
+          onClick={() => det.url && window.open(det.url, '_blank')} // Open full image on click
+          >
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {det.url && (
+                <img src={det.url} style={{ width: '24px', height: '24px', borderRadius: '2px', objectFit: 'cover' }} />
+              )}
+              <div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: '#ff2d55' }}>
+                  {det.type === 'IMAGE_DETECTION' ? '📷 IMG_ACQ' : '⚠ PERSON'}
+                </div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 8, color: 'var(--text-dim)' }}>
+                  {det.drone_id || 'EXTERNAL_AI'}
+                </div>
+              </div>
+            </div>
+            <div style={{ /* confidence styles */ }}>{det.confidence}%</div>
+          </div>
+        ))}
       </Section>
     </aside>
   )

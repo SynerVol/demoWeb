@@ -32,7 +32,16 @@ export default function AlertFeed({ alerts }) {
           opacity: 1 - i * 0.25,
           transform: `scale(${1 - i * 0.03})`,
           transformOrigin: 'bottom center',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '0',
         }}>
+          {/* IMAGE THUMBNAIL (NEW) */}
+          {alert.imageUrl && (
+            <div style={{ width: '100%', height: '120px', overflow: 'hidden', borderBottom: '1px solid rgba(255,45,85,0.3)' }}>
+              <img src={alert.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 8, height: 8, borderRadius: '50%',

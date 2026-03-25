@@ -129,9 +129,10 @@ export default function App() {
           setDetections(prev => [...prev, det])
           setAlerts(prev => [{
             id:         det.id,
-            text:       `${det.drone_id} — PERSON DETECTED`,
-            confidence: det.confidence,
+            text:       det.type === 'IMAGE_DETECTION' ? det.label : `${det.drone_id} — PERSON DETECTED`,
+            confidence: det.confidence || 95,
             time:       new Date().toLocaleTimeString(),
+            imageUrl: det.url || null, // Capture the new URL from detection.py
           }, ...prev.slice(0, 9)])
         }
       }
@@ -329,7 +330,19 @@ function DetectionMarker({ detection }) {
         center={[detection.lat, detection.lon]}
         radius={14}
         pathOptions={{ color: '#ff2d55', fillColor: '#ff2d55', fillOpacity: 0.12, weight: 1.5 }}
-      />
+      >
+        {/* Add a popup to see the image on the map */}
+        {detection.url && (
+          <L.Popup>
+            <div style={{ width: '200px', background: '#050a0f', color: '#fff', padding: '5px' }}>
+              <img src={detection.url} style={{ width: '100%', borderRadius: '4px' }} alt="Detection" />
+              <div style={{ fontSize: '10px', marginTop: '5px', fontFamily: 'var(--mono)' }}>
+                EXTERNAL AI CLASSIFICATION: HUMAN
+              </div>
+            </div>
+          </L.Popup>
+        )}
+      </CircleMarker>
       <CircleMarker
         center={[detection.lat, detection.lon]}
         radius={5}
