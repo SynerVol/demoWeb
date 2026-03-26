@@ -39,6 +39,7 @@ mission_state: Dict[str, Any] = {
     "pending_detections": [],   # pre-placed, not yet triggered
     "waypoints": {},
     "start_time": None,
+    "paused": False,
 }
 connected_clients: List[WebSocket] = []
 
@@ -159,6 +160,13 @@ def place_detections(center_lat, center_lon, radius, count):
             })
             break
     return pending
+    
+
+# ── PAUSE HELPER ─────────────────────────────────────────────────────────────
+async def wait_if_paused():
+    """Suspend coroutine while mission is paused, without blocking the event loop."""
+    while mission_state.get("paused") and mission_state.get("running"):
+        await asyncio.sleep(0.1)
 
 
 # ── BROADCAST ─────────────────────────────────────────────────────────────────
@@ -248,6 +256,7 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
                     mission_state["detections"].append(event)
                     await broadcast({"type": "detection", "detection": event})
 
+            await wait_if_paused()
             await asyncio.sleep(0.045)
 
         cur_lat, cur_lon = target_lat, target_lon
@@ -266,6 +275,7 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
         mission_state["drones"][drone_id]["lon"] = lon
         mission_state["drones"][drone_id]["traveled"].append({"lat": lat, "lon": lon})
         await broadcast({"type": "drone_update", "drone": mission_state["drones"][drone_id]})
+        await wait_if_paused()
         await asyncio.sleep(0.04)
 
     mission_state["drones"][drone_id]["status"] = "LANDED"
@@ -303,6 +313,7 @@ async def start_mission(body: dict):
 
     mission_state = {
         "running":             True,
+        "paused":              False,
         "drones":              {},
         "detections":          [],
         "pending_detections":  pending,
@@ -349,6 +360,18 @@ async def stop_mission():
 def get_state():
     return mission_state
 
+@app.post("/api/mission/pause")
+async def pause_mission():
+    mission_state["paused"] = True
+    await broadcast({"type": "mission_paused"})
+    return {"status": "paused"}
+
+
+@app.post("/api/mission/resume")
+async def resume_mission():
+    mission_state["paused"] = False
+    await broadcast({"type": "mission_resumed"})
+    return {"status": "resumed"}
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):

@@ -6,7 +6,61 @@ function fmt(s) {
   return `${m}:${sec}`
 }
 
-export default function TopBar({ wsConnected, running, stats }) {
+// String-art triangle logo — recreated from the reference image
+function SynervolLogo() {
+  const N  = 22
+  const A  = [2, 2], B = [42, 2], C = [22, 48]
+
+  // Fan 1: lines from top edge (B→A direction) to left edge (A→C)
+  const lines1 = Array.from({ length: N }, (_, i) => {
+    const t  = i / (N - 1)
+    return {
+      x1: B[0] + t * (A[0] - B[0]),
+      y1: 2,
+      x2: A[0] + t * (C[0] - A[0]),
+      y2: A[1] + t * (C[1] - A[1]),
+    }
+  })
+
+  // Fan 2: lines from top edge (A→B direction) to right edge (B→C)
+  const lines2 = Array.from({ length: N }, (_, i) => {
+    const t  = i / (N - 1)
+    return {
+      x1: A[0] + t * (B[0] - A[0]),
+      y1: 2,
+      x2: B[0] + t * (C[0] - B[0]),
+      y2: B[1] + t * (C[1] - B[1]),
+    }
+  })
+
+  return (
+    <svg width="36" height="40" viewBox="0 0 44 50" fill="none">
+      {/* Outer triangle */}
+      <polygon
+        points="2,2 42,2 22,48"
+        stroke="rgba(0,200,255,0.25)"
+        strokeWidth="0.8"
+        fill="none"
+      />
+      {/* String-art lines */}
+      {[...lines1, ...lines2].map((l, i) => (
+        <line
+          key={i}
+          x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+          stroke={i < N ? 'rgba(0,200,255,0.65)' : 'rgba(0,200,255,0.55)'}
+          strokeWidth="0.55"
+        />
+      ))}
+      {/* Small 4-pointed star (bottom-right, like in the reference) */}
+      <path
+        d="M40 45 L41.2 43.8 L42.4 45 L41.2 46.2 Z"
+        fill="rgba(0,200,255,0.5)"
+      />
+    </svg>
+  )
+}
+
+export default function TopBar({ wsConnected, running, paused, stats, onPause, onResume }) {
   return (
     <header style={{
       background: 'rgba(5,10,15,0.98)',
@@ -20,18 +74,10 @@ export default function TopBar({ wsConnected, running, stats }) {
       backdropFilter: 'blur(16px)',
       zIndex: 100,
     }}>
+
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" stroke="#00c8ff" strokeWidth="1.5" fill="rgba(0,200,255,0.06)" />
-          <circle cx="14" cy="14" r="4" fill="#00c8ff" opacity="0.9" />
-          <line x1="14" y1="2" x2="14" y2="10" stroke="#00c8ff" strokeWidth="1" opacity="0.5" />
-          <line x1="14" y1="18" x2="14" y2="26" stroke="#00c8ff" strokeWidth="1" opacity="0.5" />
-          <line x1="2" y1="8" x2="10" y2="12" stroke="#00c8ff" strokeWidth="1" opacity="0.5" />
-          <line x1="18" y1="16" x2="26" y2="20" stroke="#00c8ff" strokeWidth="1" opacity="0.5" />
-          <line x1="26" y1="8" x2="18" y2="12" stroke="#00c8ff" strokeWidth="1" opacity="0.5" />
-          <line x1="10" y1="16" x2="2" y2="20" stroke="#00c8ff" strokeWidth="1" opacity="0.5" />
-        </svg>
+        <SynervolLogo />
         <div>
           <span style={{ fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 18, letterSpacing: 3, color: '#00c8ff' }}>
             SYNERVOL
@@ -49,19 +95,64 @@ export default function TopBar({ wsConnected, running, stats }) {
         <Stat label="PROTOCOL" value="MAVLink 2.0" />
       </div>
 
-      {/* Status */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 8, height: 8, borderRadius: '50%',
-          background: wsConnected ? '#00ff88' : '#ff2d55',
-          boxShadow: wsConnected ? '0 0 8px #00ff88' : '0 0 8px #ff2d55',
-          animation: wsConnected ? 'blink 2s infinite' : 'none',
-        }} />
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: wsConnected ? '#00ff88' : '#ff2d55' }}>
-          {wsConnected ? 'LINK ESTABLISHED' : 'NO SIGNAL'}
-        </span>
+      {/* Right side: pause button + link status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+
+        {/* Pause / Resume button — only shown during active mission */}
+        {running && (
+          <button
+            onClick={paused ? onResume : onPause}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              background: paused ? 'rgba(0,255,136,0.1)' : 'rgba(255,214,10,0.1)',
+              border: `1px solid ${paused ? '#00ff88' : '#ffd60a'}`,
+              borderRadius: 5,
+              padding: '5px 14px',
+              color: paused ? '#00ff88' : '#ffd60a',
+              fontFamily: 'var(--mono)',
+              fontSize: 11,
+              letterSpacing: 2,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {paused ? (
+              <>
+                <span style={{ fontSize: 13 }}>▶</span> RESUME
+              </>
+            ) : (
+              <>
+                <PauseIcon /> PAUSE
+              </>
+            )}
+          </button>
+        )}
+
+        {/* WS link indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: wsConnected ? '#00ff88' : '#ff2d55',
+            boxShadow: wsConnected ? '0 0 8px #00ff88' : '0 0 8px #ff2d55',
+            animation: wsConnected ? 'blink 2s infinite' : 'none',
+          }} />
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: wsConnected ? '#00ff88' : '#ff2d55' }}>
+            {wsConnected ? 'LINK ESTABLISHED' : 'NO SIGNAL'}
+          </span>
+        </div>
       </div>
     </header>
+  )
+}
+
+function PauseIcon() {
+  return (
+    <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+      <rect x="0" y="0" width="3.5" height="12" rx="1" />
+      <rect x="6.5" y="0" width="3.5" height="12" rx="1" />
+    </svg>
   )
 }
 

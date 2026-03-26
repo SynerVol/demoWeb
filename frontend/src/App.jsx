@@ -65,6 +65,7 @@ export default function App() {
   const [alerts,       setAlerts]       = useState([])
   const [stats,        setStats]        = useState({ elapsed: 0 })
   const [wsConnected,  setWsConnected]  = useState(false)
+  const [paused,       setPaused]       = useState(false)
   // Search area center (right-click to move; defaults to HOME)
   const [searchCenter, setSearchCenter] = useState(HOME)
 
@@ -92,6 +93,7 @@ export default function App() {
 
         if (msg.type === 'mission_start') {
           setRunning(true)
+          setPaused(false)
           setDrones({})
           setDetections([])
           setAlerts([])
@@ -106,8 +108,12 @@ export default function App() {
 
         if (msg.type === 'mission_stop') {
           setRunning(false)
+          setPaused(false)
           clearInterval(timerRef.current)
         }
+        
+        if (msg.type === 'mission_paused')  setPaused(true)
+        if (msg.type === 'mission_resumed') setPaused(false)
 
         if (msg.type === 'drone_update') {
           const d = msg.drone
@@ -167,7 +173,9 @@ export default function App() {
     })
   }
 
-  const stopMission = () => fetch('/api/mission/stop', { method: 'POST' })
+  const stopMission   = () => fetch('/api/mission/stop',   { method: 'POST' })
+  const pauseMission  = () => fetch('/api/mission/pause',  { method: 'POST' })
+  const resumeMission = () => fetch('/api/mission/resume', { method: 'POST' })
 
   const handleRightClick = (coords) => {
     setSearchCenter(coords)
@@ -179,7 +187,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <TopBar wsConnected={wsConnected} running={running} stats={stats} />
+      <TopBar wsConnected={wsConnected} running={running} paused={paused} stats={stats} onPause={pauseMission} onResume={resumeMission} />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar
