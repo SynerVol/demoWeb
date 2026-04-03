@@ -8,7 +8,7 @@ import time
 from typing import List, Dict, Any
 import threading
 import drone_hardware as hw
-
+import drone_bridge as bridge
 
 app = FastAPI(title="SYNERVOL Drone Backend")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -17,9 +17,11 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 # ── Start real drone thread ──────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
+    def _hw_start():
+        hw.connect()
+        bridge.init(poll_hz=5.0)   # ← add this line
     # Runs in a thread so it doesn't block the event loop during the 10s timeout
     threading.Thread(target=hw.connect, daemon=True).start()
-
 
 # ── FIXED HOME (takeoff / landing point, never changes) ───────────────────────
 HOME_LAT = 48.81430786259582
@@ -223,19 +225,38 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
         target_lat, target_lon = wp["lat"], wp["lon"]
         steps = 30
 
+        bridge.goto_waypoint(target_lat, target_lon, altitude)   # no-op if simulated
         for step in range(steps + 1):
             if not mission_state["running"]: break
             t   = step / steps
             lat = cur_lat + (target_lat - cur_lat) * t
             lon = cur_lon + (target_lon - cur_lon) * t
-
+            '''
             drone = mission_state["drones"][drone_id]
             drone["lat"]     = lat
             drone["lon"]     = lon
             drone["battery"] = max(20, 100 - (wp_i / total_wps) * 65)
             drone["speed"]   = round(random.uniform(7.5, 9.5), 1)
             drone["traveled"].append({"lat": lat, "lon": lon})
+            '''
+            
+            # ── real telemetry overlay (LEADER only; followers stay simulated)
+            real = bridge.get_telemetry(drone_id)
+            if real:
+                # Use actual GPS / battery / speed from the physical drone
+                drone["lat"]     = real["lat"]
+                drone["lon"]     = real["lon"]
+                drone["alt"]     = real["alt"]
+                drone["battery"] = real["battery"]
+                drone["speed"]   = real["speed"]
+            else:
+                # Pure simulation (unchanged)
+                drone["lat"]     = cur_lat + (target_lat - cur_lat) * t
+                drone["lon"]     = cur_lon + (target_lon - cur_lon) * t
+                drone["battery"] = max(20, 100 - (wp_i / total_wps) * 65)
+                drone["speed"]   = round(random.uniform(7.5, 9.5), 1)
 
+            drone["traveled"].append({"lat": lat, "lon": lon})
             await broadcast({"type": "drone_update", "drone": drone})
 
             # ── Check proximity to pre-placed detections ───────────────────
@@ -295,6 +316,9 @@ async def simulate_drone(drone_cfg: dict, waypoints: list):
 def get_config():
     return {"home": {"lat": HOME_LAT, "lon": HOME_LON}, "drones": DRONE_CONFIGS}
 
+@app.get("/api/hardware")
+def hardware_status():
+    return bridge.status()   # replaces hw.status() — is a superset
 
 @app.post("/api/mission/start")
 async def start_mission(body: dict):
@@ -352,6 +376,7 @@ async def start_mission(body: dict):
 async def stop_mission():
     mission_state["running"] = False
     hw.stop_motors()
+    bridge.abort(rtl=True)             # ← add this line
     await broadcast({"type": "mission_stop"})
     return {"status": "stopped"}
 
